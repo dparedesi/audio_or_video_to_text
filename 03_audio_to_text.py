@@ -14,13 +14,13 @@ def parse_args():
     parser.add_argument(
         "--input",
         type=str,
-        default="inputs/New_Recording.m4a",
+        default="inputs/New Recording.m4a",
         help="Path to the input audio file."
     )
     parser.add_argument(
         "--model",
         type=str,
-        default="medium",
+        default="small",
         choices=["tiny", "base", "small", "medium", "large"],
         help="Whisper model size to use."
     )
