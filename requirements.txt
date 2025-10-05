@@ -1,0 +1,21 @@
+# Audio/Video Processing
+moviepy>=1.0.3
+pydub>=0.25.1
+ffmpeg-python>=0.2.0
+
+# Speech Recognition
+vosk>=0.3.45
+openai-whisper>=20231117
+pyaudio
+
+# Machine Learning
+torch>=2.0.0
+torchaudio>=2.0.0
+numpy>=1.24.0
+
+# Subtitle/Text Processing
+pysrt>=1.1.2
+
+# Progress & Utilities
+tqdm>=4.65.0
+

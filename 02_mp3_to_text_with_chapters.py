@@ -1,21 +1,43 @@
-import re  # <-- Missing import added here
+import re
+import sys
+import os
+import argparse
 import whisper
 import numpy as np
-from pydub import AudioSegment
 
-# Configuration
-MP3_PATH = "inputs-outputs/file-3.mp3"
-OUTPUT_TXT = "inputs-outputs/structured_audiobook.txt"
-MODEL_SIZE = "large-v3"
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Transcribe audio to structured text with chapter detection."
+    )
+    parser.add_argument(
+        "--input",
+        type=str,
+        default="inputs/audiobook.mp3",
+        help="Path to the input audio file."
+    )
+    parser.add_argument(
+        "--model",
+        type=str,
+        default="large-v3",
+        choices=["tiny", "base", "small", "medium", "large", "large-v2", "large-v3"],
+        help="Whisper model size to use."
+    )
+    parser.add_argument(
+        "--output",
+        type=str,
+        default="outputs/structured_audiobook.txt",
+        help="Path to the output text file."
+    )
+    return parser.parse_args()
 
-def transcribe_with_context():
+def transcribe_with_context(audio_path, model_size):
     """Optimized Whisper transcription with memory management"""
-    print("Loading Whisper model...")
-    model = whisper.load_model(MODEL_SIZE)
+    print(f"Loading Whisper model: {model_size}...")
+    model = whisper.load_model(model_size)
     
     print("Processing audio...")
     result = model.transcribe(
-        MP3_PATH,
+        audio_path,
         word_timestamps=True,
         verbose=True,
         condition_on_previous_text=True,
@@ -127,22 +149,35 @@ def format_advanced(text):
     return "\n\n".join(merged)
 
 def main():
+    args = parse_args()
+    
+    # Validate input file
+    if not os.path.exists(args.input):
+        print(f"Error: Audio file not found: {args.input}")
+        sys.exit(1)
+    
     try:
-        result = transcribe_with_context()
+        result = transcribe_with_context(args.input, args.model)
         structured_text = analyze_structure(result['segments'])
         final_text = format_advanced(structured_text)
         
-        with open(OUTPUT_TXT, 'w') as f:
+        # Ensure output directory exists
+        os.makedirs(os.path.dirname(args.output), exist_ok=True)
+        
+        with open(args.output, 'w') as f:
             f.write(final_text)
             
-        print(f"Successfully created audiobook text: {OUTPUT_TXT}")
+        print(f"Successfully created audiobook text: {args.output}")
         
     except Exception as e:
         print(f"Critical error: {str(e)}")
         if 'result' in locals():
             print("Attempting to save partial results...")
-            with open(OUTPUT_TXT, 'w') as f:
+            fallback_path = args.output.replace('.txt', '_partial.txt')
+            with open(fallback_path, 'w') as f:
                 f.write("\n".join([seg['text'] for seg in result.get('segments', [])]))
+            print(f"Partial results saved to: {fallback_path}")
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()

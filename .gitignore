@@ -1,3 +1,36 @@
-venv
+# Python
+venv/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Project specific
 inputs/
 outputs/
+*.wav
+*.mp3
+*.mp4
+*.mov
+*.m4a
+*.srt
+
+# Vosk models
+vosk-model-*/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Environment
+.env
+.env.local

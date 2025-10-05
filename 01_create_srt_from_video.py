@@ -1,5 +1,7 @@
 import os
 import gc
+import sys
+import argparse
 from moviepy.editor import VideoFileClip
 from vosk import Model, KaldiRecognizer
 import wave
@@ -9,43 +11,47 @@ from pydub import AudioSegment
 from tqdm import tqdm
 from datetime import datetime
 
-# Make sure you have the files
-video_path = "inputs-outputs/4. Daniel y Desi. Discursos.mov"
-
-# Select which model to use (Models available in https://alphacephei.com/vosk/models)
-#model_path = "vosk-model-small-en-us-0.15" # Small model EN
-#model_path = "vosk-model-small-es-0.42" # Small model ES
-model_path = "vosk-model-en-us-0.22"  # Large model EN
-#model_path = "vosk-model-es-0.42" # Large model ES
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Generate SRT subtitles from video using Vosk speech recognition."
+    )
+    parser.add_argument(
+        "--video",
+        type=str,
+        default="inputs/video.mov",
+        help="Path to the input video file."
+    )
+    parser.add_argument(
+        "--model",
+        type=str,
+        default="vosk-model-en-us-0.22",
+        help="Path to Vosk model directory (download from https://alphacephei.com/vosk/models)."
+    )
+    parser.add_argument(
+        "--output",
+        type=str,
+        default=None,
+        help="Output SRT filename (default: outputs/subtitles_YYMMDD-HHMM.srt)."
+    )
+    return parser.parse_args()
 
 # Step 1: Extract and convert audio to WAV mono PCM
-# Load video file
-video = VideoFileClip(video_path)
-# Extract audio (this file is deleted once the srt is created)
-audio_path = "inputs-outputs/audio_mono.wav"
-audio = video.audio
 
-def extract_and_convert_audio(video, audio_path):
-    temp_audio_path = "inputs-outputs/temp_audio.wav"
-    audio = video.audio
-    audio.write_audiofile(temp_audio_path)
-
+def extract_and_convert_audio(video, audio_path, temp_dir="outputs"):
+    """Extract audio from video and convert to mono 16kHz WAV."""
+    os.makedirs(temp_dir, exist_ok=True)
+    temp_audio_path = os.path.join(temp_dir, "temp_audio.wav")
+    
+    video.audio.write_audiofile(temp_audio_path)
+    
     audio_segment = AudioSegment.from_file(temp_audio_path)
     mono_audio = audio_segment.set_channels(1).set_frame_rate(16000)
     mono_audio.export(audio_path, format="wav")
-
+    
     os.remove(temp_audio_path)  # Remove temporary audio file
 
-extract_and_convert_audio(video, audio_path)
-
 # Step 2: Transcribe audio using Vosk
-if not os.path.exists(model_path):
-    raise ValueError(
-        "Please download the model from https://alphacephei.com/vosk/models and unpack as 'model' in the current folder.")
-
-model = Model(model_path)
-
-def transcribe_audio_vosk(audio_path):
+def transcribe_audio_vosk(audio_path, model):
     wf = wave.open(audio_path, "rb")
 
     rec = KaldiRecognizer(model, wf.getframerate())
@@ -107,25 +113,66 @@ def create_srt(transcriptions):
 
     # Add any remaining words as the last phrase
     add_phrase_to_subs()
+    
+    return subs
 
-    # Create a timestamp for the file name
-    timestamp = datetime.now().strftime("%y%m%d-%H%M")
-    subtitle_filename = f'inputs-outputs/subtitles_{timestamp}.srt'
+def save_srt(subs, output_path):
+    """Save SRT file to specified path."""
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    subs.save(output_path, encoding='utf-8')
+    print(f"Subtitles saved to '{output_path}'")
 
-    subs.save(subtitle_filename, encoding='utf-8')
-    print(f"Subtitles saved to '{subtitle_filename}'")
+def main():
+    args = parse_args()
+    
+    # Validate input file
+    if not os.path.exists(args.video):
+        print(f"Error: Video file not found: {args.video}")
+        sys.exit(1)
+    
+    # Validate model
+    if not os.path.exists(args.model):
+        print(f"Error: Vosk model not found: {args.model}")
+        print("Download models from: https://alphacephei.com/vosk/models")
+        sys.exit(1)
+    
+    # Set output path
+    if args.output is None:
+        timestamp = datetime.now().strftime("%y%m%d-%H%M")
+        args.output = f"outputs/subtitles_{timestamp}.srt"
+    
+    try:
+        # Load video and prepare audio path
+        print(f"Loading video: {args.video}")
+        video = VideoFileClip(args.video)
+        audio_path = "outputs/audio_mono.wav"
+        
+        # Extract and convert audio
+        print("Extracting audio...")
+        extract_and_convert_audio(video, audio_path)
+        
+        # Load Vosk model
+        print(f"Loading model: {args.model}")
+        model = Model(args.model)
+        
+        # Transcribe
+        transcriptions = transcribe_audio_vosk(audio_path, model)
+        
+        # Create and save SRT
+        subs = create_srt(transcriptions)
+        save_srt(subs, args.output)
+        
+        # Clean up
+        os.remove(audio_path)
+        video.close()
+        gc.collect()
+        
+        print("Processing complete.")
+        
+    except Exception as e:
+        print(f"Error during processing: {e}")
+        sys.exit(1)
 
-create_srt(transcriptions)
-
-# Clean up temporary files and memory
-os.remove(audio_path)  # Remove audio file
-
-# Release resources and force garbage collection
-video.close()
-audio.close()
-
-# Force garbage collection to free memory
-gc.collect()
-
-print("Cleanup complete.")
+if __name__ == "__main__":
+    main()
 

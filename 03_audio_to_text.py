@@ -3,13 +3,13 @@
 import argparse
 import logging
 import os
-import pty
 import sys
 from datetime import datetime
+import whisper
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Run the Whisper CLI with real-time progress via a pseudo-terminal."
+        description="Transcribe audio files using OpenAI Whisper."
     )
     parser.add_argument(
         "--input",
@@ -21,18 +21,22 @@ def parse_args():
         "--model",
         type=str,
         default="small",
-        choices=["tiny", "base", "small", "medium", "large"],
+        choices=["tiny", "base", "small", "medium", "large", "large-v2", "large-v3"],
         help="Whisper model size to use."
     )
     parser.add_argument(
         "--output",
         type=str,
-        default=f"outputs/transcription_{datetime.now().strftime('%y%m%d_%H%M')}.txt",
+        default=None,
         help="Path to the output transcription file."
     )
-    # Use parse_known_args to ignore extra Colab arguments.
-    args, _ = parser.parse_known_args()
-    return args
+    parser.add_argument(
+        "--language",
+        type=str,
+        default="en",
+        help="Language code (e.g., 'en', 'es', 'fr'). Use 'auto' for automatic detection."
+    )
+    return parser.parse_args()
 
 def setup_logging():
     logging.basicConfig(
@@ -40,46 +44,54 @@ def setup_logging():
         format="%(asctime)s - %(levelname)s - %(message)s"
     )
 
-def transcribe_with_cli(input_path, model, output_path):
+def transcribe_audio(input_path, model_name, language):
     """
-    Runs the Whisper CLI command using a pseudo-terminal so that
-    its built-in progress bar and log output are visible in real time.
-    After completion, renames the default output file to the provided output_path.
+    Transcribe audio using Whisper Python API.
     """
-    cmd = [
-        "whisper",
-        input_path,
-        "--model", model,
-        "--language", "en",            # Force language to English
-        "--output_format", "txt",
-        "--output_dir", ".",
-        "--verbose", "True"
-    ]
-    logging.info("Starting transcription with CLI command: %s", " ".join(cmd))
+    logging.info(f"Loading Whisper model: {model_name}")
+    model = whisper.load_model(model_name)
     
-    # Use pty.spawn so the CLI thinks it's attached to a terminal.
-    exit_status = pty.spawn(cmd)
+    logging.info(f"Transcribing: {input_path}")
     
-    if exit_status != 0:
-        raise Exception("Transcription failed with exit code {}".format(exit_status))
+    # Set language option
+    kwargs = {"verbose": True}
+    if language != "auto":
+        kwargs["language"] = language
     
-    # The CLI writes the output file using the base name of the input.
-    base_name = os.path.splitext(os.path.basename(input_path))[0]
+    result = model.transcribe(input_path, **kwargs)
     
-    default_output = f"{base_name}.txt"
-    if os.path.exists(default_output):
-        os.rename(default_output, output_path)
-        logging.info("Transcription saved to '%s'.", output_path)
-    else:
-        raise Exception("Expected output file not found: " + default_output)
+    return result["text"]
 
 def main():
     args = parse_args()
     setup_logging()
+    
+    # Validate input file
+    if not os.path.exists(args.input):
+        logging.error(f"Input file not found: {args.input}")
+        sys.exit(1)
+    
+    # Set output path
+    if args.output is None:
+        timestamp = datetime.now().strftime('%y%m%d_%H%M')
+        args.output = f"outputs/transcription_{timestamp}.txt"
+    
+    # Ensure output directory exists
+    os.makedirs(os.path.dirname(args.output), exist_ok=True)
+    
     try:
-        transcribe_with_cli(args.input, args.model, args.output)
+        # Transcribe
+        text = transcribe_audio(args.input, args.model, args.language)
+        
+        # Save to file
+        with open(args.output, 'w', encoding='utf-8') as f:
+            f.write(text)
+        
+        logging.info(f"Transcription saved to: {args.output}")
+        logging.info(f"Total length: {len(text)} characters")
+        
     except Exception as e:
-        logging.error("Error during transcription: %s", e)
+        logging.error(f"Error during transcription: {e}")
         sys.exit(1)
 
 if __name__ == '__main__':
