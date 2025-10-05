@@ -8,12 +8,15 @@ A collection of Python scripts for transcribing audio/video files to text and cr
 - **Video + SRT Merger**: Burn subtitles into video files with ffmpeg
 - **Audio to Structured Text**: Transcribe audiobooks with automatic chapter detection using Whisper
 - **Simple Audio Transcription**: Basic audio-to-text with Whisper CLI
+- **Live Voice Transcriber (tkinter)**: Real-time speech-to-text with basic GUI
+- **Modern Voice Transcriber (PyQt6)**: Native macOS app with professional design ⭐ NEW!
 
 ## Requirements
 
 - Python 3.8+
 - ffmpeg (for video processing)
 - Vosk models (for `01_create_srt_from_video.py`)
+- Microphone access (for `04_live_voice_transcriber.py`)
 
 ## Installation
 
@@ -118,14 +121,89 @@ python 03_audio_to_text.py \
   --output outputs/transcription.txt
 ```
 
+### 5. Live Voice Transcriber (GUI)
+
+Real-time speech-to-text transcription with a graphical interface:
+
+```bash
+python 04_live_voice_transcriber.py
+```
+
+**Features:**
+- Real-time voice transcription using faster-whisper
+- Dark mode GUI with live audio level meter
+- Voice Activity Detection (VAD) for automatic pause detection
+- Processes speech in 5-second chunks for quick feedback
+- Final complete transcription after stopping recording
+- Save transcriptions with timestamps
+- Visual feedback for recording status and processing queue
+
+**Controls:**
+- Click "Start Recording" to begin capturing audio
+- Speak naturally - the app processes speech in real-time
+- Watch the audio level meter to ensure proper microphone input
+- Click "Stop Recording" to finish and generate final transcription
+- "Clear Text" removes current transcription from display
+- "Save Transcription" exports final text to `outputs/` folder
+
+**Requirements:**
+- `faster-whisper` for efficient speech recognition
+- `pyaudio` for microphone access
+- `webrtcvad` for voice activity detection
+- `tkinter` (included with Python)
+
+**Note:** The app provides two transcriptions:
+1. **Real-time chunks**: Quick preview as you speak
+2. **Final transcription**: High-quality, context-aware transcription of complete recording
+
+### 6. Modern Voice Transcriber (PyQt6 - Native macOS) ⭐ NEW!
+
+**State-of-the-art native macOS desktop app** with professional design:
+
+```bash
+# Install PyQt6 dependencies
+pip install -r requirements_pyqt.txt
+
+# Run the modern native app
+python 05_modern_voice_transcriber_pyqt.py
+```
+
+**Features:**
+- 🍎 **True native macOS app** using Qt framework
+- 🎨 **Modern dark theme** inspired by macOS Big Sur
+- 📊 **Beautiful audio visualizer** with gradient colors
+- ⚡ **Multi-threaded** for smooth performance
+- 💾 **Native file dialogs** and macOS integration
+- 🎯 **Professional-grade** UI used by industry apps
+- ✨ **No web technologies** - truly native widgets
+
+**Why PyQt6?**
+- Native macOS widgets (not web-based)
+- Used by professional apps (Autodesk Maya, Spotify, etc.)
+- True desktop performance
+- Can build standalone `.app` bundle
+- Modern, beautiful UI out of the box
+
+**vs tkinter version (04):**
+- Modern gradient buttons vs flat buttons
+- Smooth animations and transitions
+- Native macOS look and feel
+- Better performance (multi-threaded)
+- Professional polish
+
 ## Directory Structure
 
 ```
 audio_or_video_to_text/
-├── inputs/          # Place your audio/video files here
-├── outputs/         # Transcriptions and processed files
-├── requirements.txt # Python dependencies
-└── *.py            # Processing scripts
+├── inputs/                  # Place your audio/video files here
+├── outputs/                 # Transcriptions and processed files
+├── requirements.txt         # Python dependencies (basic)
+├── requirements_pyqt.txt    # PyQt6 dependencies (for modern app)
+├── 01_*.py                 # Video subtitle scripts
+├── 02_*.py                 # Audio processing scripts
+├── 03_*.py                 # Simple transcription
+├── 04_*.py                 # Live voice transcriber (tkinter)
+└── 05_*.py                 # 🆕 Modern native app (PyQt6)
 ```
 
 ## Tips
